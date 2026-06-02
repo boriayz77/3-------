@@ -41,6 +41,7 @@ DEBUG_DUMP_CHUNK_LIMIT = 3500
 DEBUG_DUMP_CHAT_ID = os.getenv("DEBUG_DUMP_CHAT_ID")
 DEFAULT_AGENT_CHAT_ID = 1
 MAX_AGENT_CHATS = int(os.getenv("MAX_AGENT_CHATS", "8"))
+BOT_USERNAME_RE = re.compile(r"^@[A-Za-z0-9_]{5,32}$")
 CUSTOM_EMOJI_ENTITY_TYPE = "custom_emoji"
 LLM_LOADING_EMOJI = "🪩"
 LLM_LOADING_EMOJI_ID = "5375407018418904583"
@@ -370,6 +371,19 @@ def split_debug_dump(text: str) -> list[str]:
     ] or [""]
 
 
+def parse_bot_message_command(text: str) -> tuple[str, str] | None:
+    parts = text.strip().split(maxsplit=2)
+    if len(parts) < 3:
+        return None
+
+    target_username = parts[1].strip()
+    message_text = parts[2].strip()
+    if not BOT_USERNAME_RE.fullmatch(target_username) or not message_text:
+        return None
+
+    return target_username, message_text
+
+
 def build_message_debug_dump(message: Message) -> str:
     data = message.model_dump(mode="json", by_alias=True, exclude_none=False)
     return json.dumps(data, ensure_ascii=False, indent=2, default=str)
@@ -383,7 +397,7 @@ async def send_message_debug_dump(bot: Bot, message: Message) -> None:
     for index, dump_part in enumerate(dump_parts, start=1):
         await bot.send_message(
             chat_id=target_chat_id,
-            text=f"Поля входящего Message ({index}/{total_parts}):\n{dump_part}",
+            text=dump_part,
         )
 
 
@@ -401,9 +415,6 @@ class MessageDebugDumpMiddleware(BaseMiddleware):
                 logging.exception("Failed to send incoming message debug dump")
 
         return await handler(event, data)
-
-
-dp.message.outer_middleware(MessageDebugDumpMiddleware())
 
 
 def normalize_answer_text(text: str) -> str:
@@ -521,7 +532,7 @@ async def start_handler(message: Message) -> None:
         "Привет. Я сантехник-ассистент на базе GigaChat.\n"
         "Опиши проблему с водой, трубами, краном, унитазом, бойлером или отоплением, "
         "и я помогу разобраться по шагам.\n\n"
-        "Команды: /help, /chats, /newchat, /reset"
+        "Команды: /help, /chats, /newchat, /reset, /botmsg"
     )
 
 
@@ -533,7 +544,8 @@ async def help_handler(message: Message) -> None:
         "/help - показать помощь\n"
         "/chats - выбрать AI-чат\n"
         "/newchat - создать новый AI-чат\n"
-        "/reset - очистить память активного AI-чата\n\n"
+        "/reset - очистить память активного AI-чата\n"
+        "/botmsg @bot_username текст - отправить сообщение другому боту в приватный чат\n\n"
         "Просто опиши сантехническую проблему текстом. История сохраняется отдельно для каждого AI-чата."
     )
 
@@ -578,6 +590,32 @@ async def chats_handler(message: Message) -> None:
         build_agent_chats_text(user_id),
         reply_markup=get_agent_chats_keyboard(user_id),
     )
+
+
+@dp.message(Command("botmsg"))
+async def bot_message_handler(message: Message) -> None:
+    parsed = parse_bot_message_command(message.text or "")
+    if not parsed:
+        await message.answer(
+            "Формат команды: /botmsg @username_bot текст сообщения\n\n"
+            "Для работы у обоих ботов должен быть включен Bot-to-Bot Communication Mode."
+        )
+        return
+
+    target_username, message_text = parsed
+    try:
+        await message.bot.send_message(chat_id=target_username, text=message_text)
+    except TelegramBadRequest as error:
+        logging.exception("Failed to send bot-to-bot private message")
+        await message.answer(
+            "Не удалось отправить сообщение другому боту.\n\n"
+            "Проверьте, что username указан правильно и Bot-to-Bot Communication Mode включен у обоих ботов. "
+            f"Ответ Telegram: {error.message}"
+        )
+        return
+
+    await message.answer(f"Сообщение отправлено в приватный чат {target_username}.")
+
 
 
 @dp.callback_query(F.data.startswith("agent_chat:"))
@@ -745,4 +783,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-

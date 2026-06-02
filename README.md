@@ -34,7 +34,22 @@ python bot.py
 
 - `/start` resets the current dialog and shows help.
 - `/help` shows available commands.
+- `/chats` shows AI chat selector.
+- `/newchat` creates and selects a new AI chat.
 - `/reset` clears the current dialog context.
+- `/botmsg @bot_username text` sends a private message to another bot via Telegram Bot API 10.0 bot-to-bot communication.
+
+## Bot-to-bot private messages
+
+Telegram Bot API 10.0 allows a bot to send a private message to another bot by passing the recipient bot's `@username` to `sendMessage`.
+
+Example:
+
+```text
+/botmsg @OtherBot hello from this bot
+```
+
+For this to work, Bot-to-Bot Communication Mode must be enabled for both bots: the sender bot and the recipient bot. If it is disabled for either bot, Telegram will reject the request.
 
 ## Environment Variables
 
