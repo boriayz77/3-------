@@ -636,6 +636,7 @@ async def agent_chat_callback_handler(callback: CallbackQuery) -> None:
         if after_count == before_count and before_count >= MAX_AGENT_CHATS:
             response_text = f"Лимит AI-чатов: {MAX_AGENT_CHATS}."
         else:
+            
             chat = get_agent_chat(user_id, agent_chat_id)
             title = chat["title"] if chat else f"Чат {agent_chat_id}"
             response_text = f"Выбран новый чат: {title}"
