@@ -1,4 +1,4 @@
 aiogram>=3.0,<4.0
 gigachat>=0.1.39
-python-dotenv>=1.0,<2.0
-supabase>=2.0,<3.0
+python-dotenv>=1.0.0
+supabase>=2.0.0
