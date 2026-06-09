@@ -70,6 +70,7 @@ async def main() -> None:
             "и подобрать материалы для ремонта.\n\n"
             "Чтобы начать, отправь /new."
         )
+        await message.answer("Я работаю на bothost.")
 
     @dp.message(Command("help"))
     async def cmd_help(message: Message) -> None:
