@@ -13,6 +13,9 @@
 pip install -r requirements.txt
 ```
 
+
+
+
 3. Скопируйте `.env.example` в `.env` и заполните переменные.
    В `GIGACHAT_CREDENTIALS` нужен authorization key из личного кабинета GigaChat API.
    Не вставляйте туда OAuth access token.
